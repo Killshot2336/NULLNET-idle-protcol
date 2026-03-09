@@ -6,8 +6,8 @@ import {
 import {
     VERSION
 } from './content.js';
-export const STORAGE_KEY = 'nullnet_hardened_v2_primary';
-export const BACKUP_KEY = 'nullnet_hardened_v2_backup';
+export const STORAGE_KEY = 'nullnet_major_update_primary';
+export const BACKUP_KEY = 'nullnet_major_update_backup';
 
 function hasStorage() {
     try {
