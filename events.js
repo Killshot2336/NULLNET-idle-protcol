@@ -1,1 +1,25 @@
-import { EVENTS } from './content.js';import { addBuff } from './systems.js';export function triggerEvent(g){g.stats.eventsSeen++;g._addBuff=(name,duration,delta)=>addBuff(g,name,duration,delta);const badChance=Math.min(.78,.22+g.heat/170-g.badEventReduction);const isBad=Math.random()<badChance;if(isBad&&Math.random()<g.badEventCancelChance)return{canceled:true,title:'Decoy Traffic',text:'A hostile event was cancelled.'};const pool=isBad?EVENTS.filter(x=>x[0]!=='good'):EVENTS.filter(x=>x[0]!=='bad'||Math.random()<.5);const ev=pool[Math.floor(Math.random()*pool.length)];ev[3](g);return{tone:ev[0],title:ev[1],text:ev[2]};}
+import {
+    EVENTS
+} from './content.js';
+import {
+    addBuff
+} from './systems.js';
+export function triggerEvent(g) {
+    g.stats.eventsSeen++;
+    g._addBuff = (name, duration, delta) => addBuff(g, name, duration, delta);
+    const badChance = Math.min(.78, .22 + g.heat / 170 - g.badEventReduction);
+    const isBad = Math.random() < badChance;
+    if (isBad && Math.random() < g.badEventCancelChance) return {
+        canceled: true,
+        title: 'Decoy Traffic',
+        text: 'A hostile event was cancelled.'
+    };
+    const pool = isBad ? EVENTS.filter(x => x[0] !== 'good') : EVENTS.filter(x => x[0] !== 'bad' || Math.random() < .5);
+    const ev = pool[Math.floor(Math.random() * pool.length)];
+    ev[3](g);
+    return {
+        tone: ev[0],
+        title: ev[1],
+        text: ev[2]
+    };
+}
