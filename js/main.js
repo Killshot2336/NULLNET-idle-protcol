@@ -1,3 +1,4 @@
+(() => {
 'use strict';
 
 const canvas = document.getElementById('game');
@@ -64,10 +65,9 @@ const els = {
   fpsTag: document.getElementById('fpsTag'),
 };
 
-const SAVE_KEY = 'voidline-rift-reaper-release-save-v7';
-const VERSION = 7;
+const SAVE_KEY = 'voidline-rift-reaper-release-save-v6';
+const VERSION = 6;
 const LEGACY_KEYS = [
-  'voidline-rift-reaper-release-save-v6',
   'voidline-rift-reaper-release-save-v5',
   'voidline-rift-reaper-release-save-v4',
   'voidline-rift-reaper-release-save-v3',
@@ -303,7 +303,7 @@ function resize() {
   if (!state.stars.length) {
     for (let i = 0; i < 180; i++) state.stars.push({ x: rand(0, innerWidth), y: rand(0, innerHeight), s: rand(.5, 2.4), v: rand(6, 22), layer: i < 90 ? 1 : i < 145 ? 2 : 3, tw: rand(0, Math.PI * 2) });
   }
-  els.touchControls.classList.toggle('hidden', !(state.mobile && state.mode === 'game'));
+  els.touchControls?.classList.toggle('hidden', !(state.mobile && state.mode === 'game'));
 }
 
 function makePlayer() {
@@ -337,9 +337,7 @@ function refreshMetaUi() {
 
 function assignContract(initial=false) {
   if (!state.run) return;
-  const pool = contractDefs.filter(def => !state.run.contract || def.id !== state.run.contract.id);
-  const source = pool.length ? pool : contractDefs;
-  const def = source[(Math.random() * source.length) | 0];
+  const def = contractDefs[(Math.random() * contractDefs.length) | 0];
   state.run.contract = def;
   state.run.contractData = def.init(state.run);
   state.run.contractComplete = false;
@@ -472,28 +470,25 @@ function checkAchievements() {
 }
 
 function makeEnemy(type, x, y, wave) {
-  const sector = Math.min(5, Math.floor((wave - 1) / 200) + 1);
-  const hpScale = 1 + wave * 0.082 + sector * 0.05;
-  const speedBonus = Math.min(90, wave * 2.4 + sector * 6);
+  const base = 1 + wave * 0.11;
   const e = { type, x, y, vx: 0, vy: 0, t: 0, hit: 0, shot: rand(.7, 1.6), mine: 1.7 };
-  if (type === 'chaser') return { ...e, hp: 28 * hpScale, maxHp: 28 * hpScale, speed: 88 + speedBonus, r: 12, value: 4, color: '#79f4ff' };
-  if (type === 'charger') return { ...e, hp: 23 * hpScale, maxHp: 23 * hpScale, speed: 118 + Math.min(110, speedBonus * 1.2), r: 10, value: 5, color: '#ffb365', charge: 0 };
-  if (type === 'sniper') return { ...e, hp: 24 * hpScale, maxHp: 24 * hpScale, speed: 52 + Math.min(46, speedBonus * 0.42), r: 11, value: 6, color: '#ff78d2' };
-  if (type === 'orbiter') return { ...e, hp: 31 * hpScale, maxHp: 31 * hpScale, speed: 74 + Math.min(80, speedBonus * 0.9), r: 12, value: 6, color: '#a98aff', orbit: rand(0, Math.PI * 2) };
-  if (type === 'splitter') return { ...e, hp: 35 * hpScale, maxHp: 35 * hpScale, speed: 68 + Math.min(76, speedBonus * 0.85), r: 14, value: 7, color: '#82ffb8' };
-  if (type === 'kamikaze') return { ...e, hp: 21 * hpScale, maxHp: 21 * hpScale, speed: 132 + Math.min(120, speedBonus * 1.25), r: 10, value: 5, color: '#ff5e7c' };
-  if (type === 'miner') return { ...e, hp: 41 * hpScale, maxHp: 41 * hpScale, speed: 58 + Math.min(64, speedBonus * 0.6), r: 14, value: 7, color: '#ffd770' };
-  if (type === 'tank') return { ...e, hp: 66 * hpScale, maxHp: 66 * hpScale, speed: 46 + Math.min(42, speedBonus * 0.45), r: 18, value: 8, color: '#9fc0ff' };
-  return { ...e, hp: 18 * hpScale, maxHp: 18 * hpScale, speed: 0, r: 10, value: 3, color: '#ffd36e', fuse: 1.9 + rand(0,.85) };
+  if (type === 'chaser') return { ...e, hp: 28 * base, maxHp: 28 * base, speed: 90 + wave * 6, r: 12, value: 4, color: '#79f4ff' };
+  if (type === 'charger') return { ...e, hp: 22 * base, maxHp: 22 * base, speed: 120 + wave * 8, r: 10, value: 5, color: '#ffb365', charge: 0 };
+  if (type === 'sniper') return { ...e, hp: 24 * base, maxHp: 24 * base, speed: 52 + wave * 3, r: 11, value: 6, color: '#ff78d2' };
+  if (type === 'orbiter') return { ...e, hp: 30 * base, maxHp: 30 * base, speed: 76 + wave * 5, r: 12, value: 6, color: '#a98aff', orbit: rand(0, Math.PI * 2) };
+  if (type === 'splitter') return { ...e, hp: 34 * base, maxHp: 34 * base, speed: 70 + wave * 5, r: 14, value: 7, color: '#82ffb8' };
+  if (type === 'kamikaze') return { ...e, hp: 20 * base, maxHp: 20 * base, speed: 138 + wave * 8, r: 10, value: 5, color: '#ff5e7c' };
+  if (type === 'miner') return { ...e, hp: 40 * base, maxHp: 40 * base, speed: 60 + wave * 4, r: 14, value: 7, color: '#ffd770' };
+  if (type === 'tank') return { ...e, hp: 62 * base, maxHp: 62 * base, speed: 48 + wave * 4, r: 18, value: 8, color: '#9fc0ff' };
+  return { ...e, hp: 18 * base, maxHp: 18 * base, speed: 0, r: 10, value: 3, color: '#ffd36e', fuse: 1.8 + rand(0,.8) };
 }
 function makeBoss(def, wave) {
   const finalBoss = def.family === 'mothership';
-  const cycle = Math.max(0, Math.floor((wave - 1) / 100));
-  const hp = finalBoss ? 5400 : 500 + wave * 82 + cycle * 90;
   return {
     type: 'boss', name: def.name, family: def.family, x: innerWidth/2, y: 120, vx: 0, vy: 0,
-    hp, maxHp: hp, speed: finalBoss ? 54 : 68 + Math.min(48, wave * 0.12 + cycle * 3), r: finalBoss ? 92 : 40, value: finalBoss ? 550 : 70 + cycle * 5,
-    phase: 1, shot: finalBoss ? .92 : 1.02, t: 0, color: def.color, core: def.core, finalBoss, dashTimer: 1.35, telegraph: false,
+    hp: finalBoss ? 5400 : 520 + wave * 95, maxHp: finalBoss ? 5400 : 520 + wave * 95,
+    speed: finalBoss ? 54 : 70 + wave * 0.18, r: finalBoss ? 92 : 40, value: finalBoss ? 550 : 70,
+    phase: 1, shot: finalBoss ? .85 : .95, t: 0, color: def.color, core: def.core, finalBoss, dashTimer: 1.35,
   };
 }
 function startRun() {
@@ -521,7 +516,6 @@ function startRun() {
   state.bullets = []; state.enemyBullets = []; state.enemies = []; state.drops = []; state.particles = [];
   state.flashes = []; state.texts = []; state.slashes = []; state.drones = []; state.shake = 0;
   state.freezeTimer = 0; state.bossIntro = 0;
-  assignContract(true);
   startNextWave();
   syncHud();
 }
@@ -582,7 +576,7 @@ function startNextWave() {
   r.tookDamageWave = false;
   r.player.shieldLeft = r.player.waveShield;
   r.inBossWave = r.wave % 10 === 0;
-  if (!r.inBossWave && r.wave > 1 && r.wave % 5 === 1) assignContract(false);
+  if (!r.inBossWave && r.wave % 5 === 1) assignContract(false);
   if (r.inBossWave) {
     r.event = r.wave === 1000 ? 'Mother Ship' : 'Boss';
     r.currentBossName = r.wave === 1000 ? MOTHERSHIP.name : (r.bossOrder[r.bossIndex % r.bossOrder.length]?.name || 'Boss');
@@ -596,9 +590,8 @@ function startNextWave() {
   } else {
     r.event = events[(r.wave - 1) % events.length];
     const eventBonus = r.event === 'Riftstorm' ? 3 : r.event === 'Bulwark' ? 2 : r.event === 'Crossfire' ? 1 : 0;
-    const baseline = 8 + Math.floor(r.wave * 1.42) + eventBonus + Math.floor(r.sector * 0.9);
-    r.enemiesToSpawn = Math.min(64, baseline);
-    r.spawnTimer = 0.44;
+    r.enemiesToSpawn = 8 + Math.floor(r.wave * 1.75) + eventBonus + Math.floor(r.sector * 1.2);
+    r.spawnTimer = 0.42;
     banner(r.wave % 10 === 9 ? `Wave ${r.wave} • Warning: Boss Signal Rising` : `Wave ${r.wave} • ${r.event}`);
     audio.ui();
   }
@@ -638,7 +631,7 @@ function spawnEnemy() {
   if (r.event === 'Bulwark') pool.push('tank');
   if (r.event === 'Riftstorm') pool.push('orbiter','splitter');
   const e = makeEnemy(pool[(Math.random()*pool.length)|0], x, y, wave);
-  if (wave >= 15 && Math.random() < Math.min(0.22, 0.04 + wave * 0.0009)) applyElite(e);
+  if (wave >= 15 && Math.random() < Math.min(0.28, 0.05 + wave * 0.0012)) applyElite(e);
   state.enemies.push(e);
 }
 
@@ -758,7 +751,7 @@ function killEnemy(index, slash) {
   r.comboTimer = 2.4;
   r.maxCombo = Math.max(r.maxCombo, r.combo);
   r.player.pulse = clamp(r.player.pulse + e.value * 1.8 * r.player.pulseGain, 0, 100);
-  r.player.slash = clamp(r.player.slash + e.value * 1.4 * r.player.slashGain, 0, 100);
+  r.player.slash = clamp(r.player.slash + e.value * 1.4 * r.player.pulseGain, 0, 100);
   const credits = Math.max(1, Math.round(e.value * (1 + r.player.creditBoost)));
   state.drops.push({ x: e.x, y: e.y, value: credits, vx: rand(-40,40), vy: rand(-40,40), life: 8 });
   floatingText(e.x, e.y, `+${Math.floor(e.value * 18)}`, '#eef4ff');
@@ -772,7 +765,7 @@ function killEnemy(index, slash) {
   if (e.type === 'boss') {
     r.bosses += 1;
     els.bossHud.classList.add('hidden');
-    toast(`${e.name} defeated`);
+    toast('Boss defeated');
     cg.happy();
   }
 }
@@ -817,11 +810,8 @@ function usePulse() {
   p.pulse = 0;
   audio.pulse();
   state.shake = .8;
-  const pulseDamage = 48 + (p.pulseDamageBonus || 0) + Math.min(30, state.run.wave * 0.08);
-  explode(p.x, p.y, 182, pulseDamage, '#8ad8ff');
-  state.freezeTimer = Math.max(state.freezeTimer, .035);
+  explode(p.x, p.y, 182, 48, '#8ad8ff');
 }
-
 function pointSegDist(px, py, x1, y1, x2, y2) {
   const dx = x2 - x1, dy = y2 - y1;
   const l2 = dx * dx + dy * dy || 1;
@@ -920,11 +910,8 @@ function updateBoss(e, dt) {
     e.x = lerp(e.x, innerWidth / 2 + Math.cos(e.t * .45) * 120, dt * .7);
     e.y = lerp(e.y, 150 + Math.sin(e.t * .6) * 60, dt * .7);
     e.shot -= dt;
-    if (!e.telegraph && e.shot <= 0.24) { e.telegraph = true; state.flashes.push({ x: e.x, y: e.y, radius: e.r + 34, life: .16, color: 'rgba(255,240,180,0.95)' }); }
-    if (!e.telegraph && e.shot <= 0.18) { e.telegraph = true; state.flashes.push({ x:e.x, y:e.y, radius:e.r + 20, life:.14, color:'rgba(255,245,185,0.88)' }); }
+    if (e.shot < 0.22 && e.shot > 0.18) state.flashes.push({ x: e.x, y: e.y, radius: e.r + 28, life: .12, color: 'rgba(255,240,180,0.9)' });
   if (e.shot <= 0) {
-    e.telegraph = false;
-      e.telegraph = false;
       radialShots(e, e.phase === 1 ? 12 : e.phase === 2 ? 18 : 24, e.phase === 3 ? 280 : 220, e.phase === 3 ? 11 : 8);
       if (e.phase >= 2) spawnAdds(2 + e.phase);
       e.shot = e.phase === 3 ? .55 : e.phase === 2 ? .9 : 1.2;
@@ -940,9 +927,7 @@ function updateBoss(e, dt) {
   }
   e.x += e.vx * dt; e.y += e.vy * dt; e.vx *= .92; e.vy *= .92;
   e.shot -= dt;
-  if (!e.telegraph && e.shot <= 0.18) { e.telegraph = true; state.flashes.push({ x:e.x, y:e.y, radius:e.r + 20, life:.14, color:'rgba(255,245,185,0.88)' }); }
   if (e.shot <= 0) {
-    e.telegraph = false;
     if (e.family === 'rift') radialShots(e, e.phase===3?16:10, e.phase===3?260:210, e.phase===3?8:6);
     else if (e.family === 'widow') { for (let i=-2;i<=2;i+=2) state.enemyBullets.push({ x:e.x,y:e.y,vx:Math.cos(a+i*.08)*320,vy:Math.sin(a+i*.08)*320,life:4.2,r:4,dmg:7 }); }
     else if (e.family === 'static') radialShots(e, e.phase===3?20:12, 180+e.phase*20, 6+e.phase);
@@ -957,13 +942,12 @@ function updateBoss(e, dt) {
 function updateEnemies(dt) {
   const p = state.run.player;
   const r = state.run;
-  const liveCap = Math.min(42, 14 + Math.floor(r.wave * 0.12) + r.sector * 2);
   if (r.enemiesToSpawn > 0) {
     r.spawnTimer -= dt;
-    if (r.spawnTimer <= 0 && state.enemies.length < liveCap) {
+    if (r.spawnTimer <= 0) {
       spawnEnemy();
       r.enemiesToSpawn -= 1;
-      const base = Math.max(.18, .44 - Math.min(.16, r.wave * .0055));
+      const base = Math.max(.16, .42 - Math.min(.18, r.wave * .008));
       r.spawnTimer = r.inBossWave ? 99 : base;
     }
   }
@@ -1075,7 +1059,7 @@ function updateCombo(dt) {
   const r = state.run;
   if (r.combo > 1) {
     r.comboTimer -= dt;
-    if (r.comboTimer <= 0) r.combo = Math.max(1, r.combo - dt * 0.68);
+    if (r.comboTimer <= 0) r.combo = Math.max(1, r.combo - dt * 0.85);
   }
 }
 function openUpgradeChoices() {
@@ -1119,10 +1103,6 @@ function syncHud() {
   els.creditsText.textContent = state.run.credits.toLocaleString();
   els.comboText.textContent = `x${state.run.combo.toFixed(1)}`;
   els.shieldText.textContent = p.shieldLeft;
-  els.sectorText.textContent = roman(state.run.sector);
-  els.archetypeText.textContent = state.run.archetype ? archetypeDefs[state.run.archetype]?.name || 'Awakened' : 'None';
-  const contractProgress = state.run.contract ? state.run.contract.progress(state.run) : 0;
-  els.contractText.textContent = state.run.contract ? `${Math.min(state.run.contractData.goal, Math.floor(contractProgress))}/${state.run.contractData.goal}` : 'Stand by';
   const boss = state.enemies.find(e => e.type === 'boss');
   els.bossHud.classList.toggle('hidden', !boss);
   if (boss) {
@@ -1135,7 +1115,7 @@ function update(dt) {
   if (state.fps.time >= .5) {
     state.fps.value = Math.round(state.fps.frame / state.fps.time);
     state.fps.frame = 0; state.fps.time = 0;
-    if (state.fps.show) els.fpsTag.textContent = `FPS ${state.fps.value}`;
+    if (state.fps.show && els.fpsTag) els.fpsTag.textContent = `FPS ${state.fps.value}`;
   }
   for (const s of state.stars) { s.y += s.v * dt; if (s.y > innerHeight + 2) { s.y = -2; s.x = rand(0, innerWidth); } }
   updateParticles(dt);
@@ -1149,7 +1129,7 @@ function update(dt) {
   p.hp = Math.min(p.maxHp, p.hp + p.regen * dt);
   p.slash = clamp(p.slash + dt * 8.5 * p.slashGain, 0, 100);
   if (p.autoPulse && p.hp < p.maxHp * .35) p.pulse = clamp(p.pulse + dt * 40, 0, 100);
-  if (r.event === 'Storm Field' && Math.random() < dt * 0.42) { const ex = rand(60, innerWidth-60), ey = rand(60, innerHeight-60); state.flashes.push({ x: ex, y: ey, radius: 44, life: .18, color: '#fff07a' }); for (const e of state.enemies) if (dist(ex, ey, e.x, e.y) < 44 + e.r) hitEnemy(e, 16 + r.wave * .1, false); if (dist(ex, ey, p.x, p.y) < 50) damagePlayer(7); }
+  if (r.event === 'Storm Field' && Math.random() < dt * 0.65) { const ex = rand(60, innerWidth-60), ey = rand(60, innerHeight-60); state.flashes.push({ x: ex, y: ey, radius: 44, life: .18, color: '#fff07a' }); for (const e of state.enemies) if (dist(ex, ey, e.x, e.y) < 44 + e.r) hitEnemy(e, 18 + r.wave * .12, false); if (dist(ex, ey, p.x, p.y) < 50) damagePlayer(8); }
 
   const m = getMoveVector();
   const moveMul = r.event === 'Low Gravity' ? 1.14 : 1;
@@ -1168,11 +1148,8 @@ function update(dt) {
     if (!r.tookDamageWave) r.perfectWaves += 1;
     if (r.contract?.onWaveEnd) r.contract.onWaveEnd(r);
     maybeCheckContract();
-    if (r.inBossWave) {
-      cg.happy();
-      if (r.wave < 1000 && r.wave % 100 === 0) toast(`Sector milestone • Wave ${r.wave}`);
-      if (r.wave >= 1000) endRun(true); else openRelicChoices();
-    } else openUpgradeChoices();
+    if (r.inBossWave) { cg.happy(); if (r.wave >= 1000) endRun(true); else openRelicChoices(); }
+    else openUpgradeChoices();
   }
   checkAchievements();
   syncHud();
@@ -1432,7 +1409,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'F3') {
     e.preventDefault();
     state.fps.show = !state.fps.show;
-    els.fpsTag.classList.toggle('hidden', !state.fps.show);
+    els.fpsTag?.classList.toggle('hidden', !state.fps.show);
   }
 });
 window.addEventListener('keyup', (e) => { state.keys[e.code] = false; });
@@ -1453,22 +1430,22 @@ function resetStick() {
   state.touch.active = false; state.touch.x = 0; state.touch.y = 0; state.touch.id = null;
   els.touchStick.style.transform = 'translate(-50%, -50%)';
 }
-els.touchPad.addEventListener('pointerdown', (e) => { state.touch.id = e.pointerId; els.touchPad.setPointerCapture(e.pointerId); setStick(e.clientX, e.clientY); });
-els.touchPad.addEventListener('pointermove', (e) => { if (state.touch.id === e.pointerId) setStick(e.clientX, e.clientY); });
-els.touchPad.addEventListener('pointerup', resetStick);
-els.touchPad.addEventListener('pointercancel', resetStick);
-els.pulseBtn.addEventListener('click', usePulse);
-els.slashBtn.addEventListener('click', useSlash);
+els.touchPad?.addEventListener('pointerdown', (e) => { state.touch.id = e.pointerId; els.touchPad.setPointerCapture(e.pointerId); setStick(e.clientX, e.clientY); });
+els.touchPad?.addEventListener('pointermove', (e) => { if (state.touch.id === e.pointerId) setStick(e.clientX, e.clientY); });
+els.touchPad?.addEventListener('pointerup', resetStick);
+els.touchPad?.addEventListener('pointercancel', resetStick);
+els.pulseBtn?.addEventListener('click', usePulse);
+els.slashBtn?.addEventListener('click', useSlash);
 
-els.startBtn.addEventListener('click', () => { audio.ensure(); audio.ui(); startRun(); });
-els.retryBtn.addEventListener('click', () => { audio.ui(); startRun(); });
-els.menuBtn.addEventListener('click', () => { audio.ui(); showMenu(); });
-els.pauseMenuBtn.addEventListener('click', () => { audio.ui(); showMenu(); });
-els.resumeBtn.addEventListener('click', () => { audio.ui(); pauseGame(false); });
-els.howBtn.addEventListener('click', () => { audio.ui(); els.howPanel.classList.remove('hidden'); });
-els.closeHow.addEventListener('click', () => { audio.ui(); els.howPanel.classList.add('hidden'); });
-els.tabMeta.addEventListener('click', () => { audio.ui(); setHomeTab('upgrades'); });
-els.tabAchievements.addEventListener('click', () => { audio.ui(); setHomeTab('milestones'); });
+els.startBtn?.addEventListener('click', () => { audio.ensure(); audio.ui(); startRun(); });
+els.retryBtn?.addEventListener('click', () => { audio.ui(); startRun(); });
+els.menuBtn?.addEventListener('click', () => { audio.ui(); showMenu(); });
+els.pauseMenuBtn?.addEventListener('click', () => { audio.ui(); showMenu(); });
+els.resumeBtn?.addEventListener('click', () => { audio.ui(); pauseGame(false); });
+els.howBtn?.addEventListener('click', () => { audio.ui(); els.howPanel?.classList.remove('hidden'); });
+els.closeHow?.addEventListener('click', () => { audio.ui(); els.howPanel?.classList.add('hidden'); });
+els.tabMeta?.addEventListener('click', () => { audio.ui(); setHomeTab('upgrades'); });
+els.tabAchievements?.addEventListener('click', () => { audio.ui(); setHomeTab('milestones'); });
 
 (async function boot() {
   resize();
@@ -1478,4 +1455,5 @@ els.tabAchievements.addEventListener('click', () => { audio.ui(); setHomeTab('mi
   setHomeTab('upgrades');
   showMenu();
   requestAnimationFrame(loop);
+})();
 })();
