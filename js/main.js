@@ -1,4 +1,3 @@
-(() => {
 'use strict';
 
 const canvas = document.getElementById('game');
@@ -1479,5 +1478,4 @@ els.tabAchievements.addEventListener('click', () => { audio.ui(); setHomeTab('mi
   setHomeTab('upgrades');
   showMenu();
   requestAnimationFrame(loop);
-})();
 })();
