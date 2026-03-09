@@ -2,7 +2,9 @@ import {
     MODES,
     TARGETS,
     BOSSES,
-    DATA
+    DATA,
+    CONTRACT_TEMPLATES,
+    CHALLENGE_TEMPLATES
 } from './content.js';
 import {
     clamp,
@@ -38,11 +40,11 @@ export function addHeat(g, amt) {
     if (g.heat > g.stats.highestHeat) g.stats.highestHeat = g.heat;
 }
 export function calcFragments(g) {
-    return Math.floor((Math.sqrt(Math.max(0, g.lifetimeCredits)) / 90) + (Math.max(0, g.lifetimeData) / 22) + Math.max(0, g.targetTier - 1) + Object.keys(g.bossDefeated || {}).length * 2);
+    return Math.floor((Math.sqrt(Math.max(0, g.lifetimeCredits)) / 90) + (Math.max(0, g.lifetimeData) / 22) + Math.max(0, g.targetTier - 1) + Object.keys(g.bossDefeated || {}).length * 2 + (g.stats.contractsDone || 0) * .2);
 }
 export function previewManual(g) {
     const mode = MODES[g.runMode];
-    let r = 5 * safe(g.manualMultiplier, 1) * TARGETS[g.targetTier].reward * globalMult(g) * (1 + safe(g.manualRewardPct) + (g.perks.manualBonus || 0)) * mode.manual;
+    let r = 12 * safe(g.manualMultiplier, 1) * TARGETS[g.targetTier].reward * globalMult(g) * (1 + safe(g.manualRewardPct) + (g.perks.manualBonus || 0)) * mode.manual;
     if (g.targetTier >= 2) r *= 1 + safe(g.tierBonusMultiplier);
     return Math.round(r);
 }
@@ -75,14 +77,15 @@ export function manualBreach(g) {
         comboMult = 1 + Math.min(.7, g.combo * .025 * (1 + safe(g.comboPower)));
     const crit = Math.random() < safe(g.manualCritChance),
         mega = Math.random() < safe(g.manualMegaCritChance);
-    let reward = 5 * safe(g.manualMultiplier, 1) * t.reward * globalMult(g) * (1 + safe(g.manualRewardPct) + (g.perks.manualBonus || 0)) * mode.manual * comboMult;
+    let reward = 12 * safe(g.manualMultiplier, 1) * t.reward * globalMult(g) * (1 + safe(g.manualRewardPct) + (g.perks.manualBonus || 0)) * mode.manual * comboMult;
     if (g.targetTier >= 2) reward *= 1 + safe(g.tierBonusMultiplier);
     if (crit) reward *= 2;
     if (mega) reward *= 3;
     reward = Math.round(reward);
     g.credits += reward;
     g.lifetimeCredits += reward;
-    g.progress += reward * .25 * safe(g.progressMultiplier, 1);
+    g.progress += reward * .32 * safe(g.progressMultiplier, 1);
+    g.score += reward * (g.scoreMultiplier || 1);
     g.stats.totalClicks++;
     g.combo = Math.min(20, g.combo + 1);
     g.comboTimer = 3.6;
@@ -93,8 +96,10 @@ export function manualBreach(g) {
         data = Math.max(1, Math.round(data * dataMult(g)));
         g.data += data;
         g.lifetimeData += data;
+        g.score += data * 10;
     }
     addHeat(g, 1 * t.heat * Math.max(.22, safe(g.heatGainMultiplier, 1)) * mode.heat + (g.combo >= 8 ? .15 : 0));
+    if (g.contract) updateContractProgress(g, reward, data);
     return {
         reward,
         data,
@@ -165,6 +170,7 @@ export function attemptBoss(g) {
         g.fragments += boss.rewardFragments;
         g.exploits += boss.rewardExploits;
         g.progress += Number(tier) * 10000;
+        g.score += boss.rewardFragments * 1000;
         return {
             state: 'win',
             name: boss.name,
@@ -228,8 +234,74 @@ export function applyPersistentPerks(g) {
     if (g.prestigeOwned.cooler_boots) g.perks.coolerBoots = true;
     if (g.prestigeOwned.deep_recall) g.perks.dataBonus = .10;
     if (g.prestigeOwned.fast_init) g.perks.fastInit = true;
+    if (g.prestigeOwned.season_memory) g.perks.contractBonus = .15;
 }
 export function startRunBonuses(g) {
     if (g.perks.seedCapital) g.credits += 25;
     if (g.perks.coolerBoots) g.heat = Math.max(0, g.heat - 10);
+}
+export function maybeSpawnContract(g) {
+    if (!g.contractsUnlocked || g.contract) return;
+    const base = CONTRACT_TEMPLATES[Math.floor(Math.random() * CONTRACT_TEMPLATES.length)];
+    const goal = Math.ceil(base.goalBase * (1 + Math.max(0, g.targetTier - 1) * .55));
+    g.contract = {
+        ...base,
+        goal,
+        progress: 0,
+        timeLeft: Math.max(35, Math.floor(base.duration * (1 - g.contractSpeed)))
+    };
+}
+export function updateContractProgress(g, creditsGain, dataGain) {
+    if (!g.contract) return;
+    if (g.contract.type === 'credits') g.contract.progress += creditsGain;
+    if (g.contract.type === 'data') g.contract.progress += dataGain;
+    if (g.contract.type === 'combo') g.contract.progress = Math.max(g.contract.progress, g.combo);
+    if (g.contract.type === 'heat' && g.heat < 30) g.contract.progress = 1;
+}
+export function tickContract(g, dt) {
+    if (!g.contract) return null;
+    g.contract.timeLeft -= dt;
+    if (g.contract.progress >= g.contract.goal) {
+        const c = Math.round(g.contract.rewardCredits * (g.contractMultiplier + (g.perks.contractBonus || 0)));
+        const d = Math.round(g.contract.rewardData * (g.contractMultiplier + (g.perks.contractBonus || 0)));
+        g.credits += c;
+        g.data += d;
+        g.lifetimeCredits += c;
+        g.lifetimeData += d;
+        g.score += c + d * 20;
+        g.stats.contractsDone++;
+        const name = g.contract.name;
+        g.contract = null;
+        return {
+            type: 'win',
+            name,
+            credits: c,
+            data: d
+        };
+    }
+    if (g.contract.timeLeft <= 0) {
+        const name = g.contract.name;
+        g.contract = null;
+        return {
+            type: 'fail',
+            name
+        };
+    }
+    return null;
+}
+export function rerollContract(g) {
+    g.contract = null;
+    maybeSpawnContract(g);
+}
+export function maybeAssignChallenge(g) {
+    if (!g.challengesUnlocked || g.challenge || g.targetTier < 3) return;
+    const ch = CHALLENGE_TEMPLATES[Math.floor(Math.random() * CHALLENGE_TEMPLATES.length)];
+    g.challenge = {
+        ...ch
+    };
+    applyDelta(g, ch.mods, 1);
+}
+export function contractProgressPercent(g) {
+    if (!g.contract) return 0;
+    return Math.min(100, (g.contract.progress / g.contract.goal) * 100);
 }
