@@ -6,20 +6,21 @@ import {
     clamp,
     safe
 } from './math.js';
+
 export function createState(saved = {}) {
     return {
         version: VERSION,
-        credits: 0,
-        data: 0,
-        heat: 0,
-        bandwidth: 10,
+        credits: saved.credits || 0,
+        data: saved.data || 0,
+        heat: saved.heat || 0,
+        bandwidth: saved.bandwidth || 10,
         bandwidthUsed: 0,
         fragments: saved.fragments || 0,
         exploits: saved.exploits || 0,
-        targetTier: 1,
-        progress: 0,
+        targetTier: saved.targetTier || 1,
+        progress: saved.progress || 0,
         runMode: saved.runMode || 'balanced',
-        bossProgress: 0,
+        bossProgress: saved.bossProgress || 0,
         bossDefeated: saved.bossDefeated || {},
         manualMultiplier: 1,
         manualCritChance: 0,
@@ -43,17 +44,26 @@ export function createState(saved = {}) {
         coolTraceBonus: 0,
         burstGainMultiplier: 1,
         tierBonusMultiplier: 0,
+        contractMultiplier: 1,
+        contractBonus: 0,
+        contractSpeed: 0,
+        eventValueMultiplier: 0,
+        scoreMultiplier: 1,
+        challengeMultiplier: 1,
         nodesUnlocked: false,
+        contractsUnlocked: false,
+        challengesUnlocked: false,
+        contractSlots: 0,
         nodeSlots: 2,
         deepParse: false,
         parallelChains: false,
         comboPower: 0,
-        combo: 0,
-        comboTimer: 0,
-        burstCharge: 0,
-        stealthWindow: 0,
-        lifetimeCredits: 0,
-        lifetimeData: 0,
+        combo: saved.combo || 0,
+        comboTimer: saved.comboTimer || 0,
+        burstCharge: saved.burstCharge || 0,
+        stealthWindow: saved.stealthWindow || 0,
+        lifetimeCredits: saved.lifetimeCredits || 0,
+        lifetimeData: saved.lifetimeData || 0,
         owned: saved.owned || {},
         researchOwned: saved.researchOwned || {},
         nodesOwned: saved.nodesOwned || {},
@@ -68,7 +78,8 @@ export function createState(saved = {}) {
             globalBonus: 0,
             dataBonus: 0,
             fastInit: false,
-            manualBonus: 0
+            manualBonus: 0,
+            contractBonus: 0
         },
         stats: saved.stats || {
             totalClicks: 0,
@@ -78,21 +89,27 @@ export function createState(saved = {}) {
             totalPlaytime: 0,
             lowHeatTime: 0,
             burstUses: 0,
-            exploitUses: 0
+            exploitUses: 0,
+            contractsDone: 0
         },
-        cooldowns: {
+        cooldowns: saved.cooldowns || {
             coolTrace: 0,
             burst: 0,
             exploit: 0
         },
-        eventTimer: 30,
-        eventBuffs: [],
-        lastTick: Date.now(),
+        contract: saved.contract || null,
+        challenge: saved.challenge || null,
+        score: saved.score || 0,
+        eventTimer: saved.eventTimer || 15,
+        eventBuffs: saved.eventBuffs || [],
+        lastTick: saved.lastTick || Date.now(),
         previewFragments: 0
     };
 }
+
 export function sanitizeState(g) {
-    for (const k of ['credits', 'data', 'heat', 'bandwidth', 'bandwidthUsed', 'fragments', 'exploits', 'targetTier', 'progress', 'manualMultiplier', 'manualCritChance', 'manualMegaCritChance', 'manualDataChance', 'manualRewardPct', 'passiveCreditsFlat', 'passiveDataFlat', 'passiveExploitsFlat', 'passiveMultiplier', 'globalMultiplier', 'dataMultiplier', 'nodeMultiplier', 'progressMultiplier', 'heatGainMultiplier', 'heatDecayMultiplier', 'heatPenaltyReduction', 'autoHeatReduction', 'badEventReduction', 'badEventCancelChance', 'coolTraceBonus', 'burstGainMultiplier', 'tierBonusMultiplier', 'nodeSlots', 'comboPower', 'combo', 'comboTimer', 'burstCharge', 'stealthWindow', 'lifetimeCredits', 'lifetimeData', 'eventTimer', 'previewFragments']) g[k] = Math.max(0, safe(g[k], 0));
+    const numericKeys = ['credits', 'data', 'heat', 'bandwidth', 'bandwidthUsed', 'fragments', 'exploits', 'targetTier', 'progress', 'bossProgress', 'manualMultiplier', 'manualCritChance', 'manualMegaCritChance', 'manualDataChance', 'manualRewardPct', 'passiveCreditsFlat', 'passiveDataFlat', 'passiveExploitsFlat', 'passiveMultiplier', 'globalMultiplier', 'dataMultiplier', 'nodeMultiplier', 'progressMultiplier', 'heatGainMultiplier', 'heatDecayMultiplier', 'heatPenaltyReduction', 'autoHeatReduction', 'badEventReduction', 'badEventCancelChance', 'coolTraceBonus', 'burstGainMultiplier', 'tierBonusMultiplier', 'contractMultiplier', 'contractBonus', 'contractSpeed', 'eventValueMultiplier', 'scoreMultiplier', 'challengeMultiplier', 'contractSlots', 'nodeSlots', 'comboPower', 'combo', 'comboTimer', 'burstCharge', 'stealthWindow', 'lifetimeCredits', 'lifetimeData', 'score', 'eventTimer', 'previewFragments', 'lastTick'];
+    for (const key of numericKeys) g[key] = Math.max(0, safe(g[key], 0));
     g.heat = clamp(g.heat, 0, 100);
     g.targetTier = clamp(Math.floor(g.targetTier || 1), 1, 8);
     if (!['balanced', 'ghost', 'overclock', 'architect'].includes(g.runMode)) g.runMode = 'balanced';
@@ -108,7 +125,8 @@ export function sanitizeState(g) {
         totalPlaytime: 0,
         lowHeatTime: 0,
         burstUses: 0,
-        exploitUses: 0
+        exploitUses: 0,
+        contractsDone: 0
     };
     if (!g.cooldowns || typeof g.cooldowns !== 'object') g.cooldowns = {
         coolTrace: 0,
@@ -117,15 +135,29 @@ export function sanitizeState(g) {
     };
     return g;
 }
+
 export function rebuildPermanentState(g) {
     const fresh = createState(g);
     Object.assign(fresh, {
+        credits: g.credits || 0,
+        data: g.data || 0,
+        heat: g.heat || 0,
         fragments: g.fragments || 0,
         exploits: g.exploits || 0,
         targetTier: g.targetTier || 1,
         progress: g.progress || 0,
         runMode: g.runMode || 'balanced',
+        bossProgress: g.bossProgress || 0,
         bossDefeated: g.bossDefeated || {},
+        combo: g.combo || 0,
+        comboTimer: g.comboTimer || 0,
+        burstCharge: g.burstCharge || 0,
+        stealthWindow: g.stealthWindow || 0,
+        lifetimeCredits: g.lifetimeCredits || 0,
+        lifetimeData: g.lifetimeData || 0,
+        score: g.score || 0,
+        contract: g.contract || null,
+        challenge: g.challenge || null,
         owned: g.owned || {},
         researchOwned: g.researchOwned || {},
         nodesOwned: g.nodesOwned || {},
@@ -136,24 +168,28 @@ export function rebuildPermanentState(g) {
         tutorialIndex: g.tutorialIndex || 0,
         perks: g.perks || fresh.perks,
         stats: g.stats || fresh.stats,
-        lifetimeCredits: g.lifetimeCredits || 0,
-        lifetimeData: g.lifetimeData || 0
+        cooldowns: g.cooldowns || fresh.cooldowns,
+        eventTimer: g.eventTimer || 30,
+        eventBuffs: g.eventBuffs || [],
+        lastTick: g.lastTick || Date.now()
     });
     const apply = (items, owned) => {
         for (const item of items) {
-            if (owned[item.id]) {
-                for (const [k, v] of Object.entries(item.delta)) {
-                    if (typeof v === 'boolean') fresh[k] = v;
-                    else fresh[k] = (fresh[k] || 0) + v;
-                }
-                if (item.bandwidth) fresh.bandwidthUsed += item.bandwidth;
+            if (!owned[item.id]) continue;
+            for (const [k, v] of Object.entries(item.delta)) {
+                if (typeof v === 'boolean') fresh[k] = v;
+                else fresh[k] = (fresh[k] || 0) + v;
             }
+            if (item.bandwidth) fresh.bandwidthUsed += item.bandwidth;
         }
     };
     apply(DATA.scripts, fresh.owned);
     apply(DATA.automation, fresh.owned);
     apply(DATA.stealth, fresh.owned);
     apply(DATA.hardware, fresh.owned);
+    apply(DATA.contracts, fresh.owned);
+    apply(DATA.labs, fresh.owned);
+    apply(DATA.challenges, fresh.owned);
     apply(DATA.research, fresh.researchOwned);
     apply(DATA.nodes, fresh.nodesOwned);
     if (fresh.prestigeOwned.seed_capital) fresh.perks.seedCapital = true;
@@ -161,6 +197,7 @@ export function rebuildPermanentState(g) {
     if (fresh.prestigeOwned.cooler_boots) fresh.perks.coolerBoots = true;
     if (fresh.prestigeOwned.deep_recall) fresh.perks.dataBonus = .10;
     if (fresh.prestigeOwned.fast_init) fresh.perks.fastInit = true;
+    if (fresh.prestigeOwned.season_memory) fresh.perks.contractBonus = .15;
     sanitizeState(fresh);
     return fresh;
 }
