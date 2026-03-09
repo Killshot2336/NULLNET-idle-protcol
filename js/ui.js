@@ -16,7 +16,8 @@ import {
     heatPenalty,
     canBuy,
     runtimeCredits,
-    runtimeData
+    runtimeData,
+    contractProgressPercent
 } from './systems.js';
 import {
     fmt
@@ -25,7 +26,7 @@ export function $(id) {
     return document.getElementById(id);
 }
 export function bindElements() {
-    const ids = ['creditsValue', 'dataValue', 'exploitsValue', 'heatValue', 'heatFill', 'bwUsed', 'bwMax', 'bwState', 'fragmentsValue', 'resetPreview', 'tierValue', 'tierName', 'creditsPerSec', 'dataPerSec', 'exploitRate', 'terminalLog', 'heatStatePill', 'tutorialStatus', 'targetName', 'targetReward', 'targetDesc', 'targetRisk', 'targetHeat', 'tierProgress', 'tierProgressText', 'manualInfo', 'passiveCredits', 'passiveData', 'comboValue', 'activeBuffs', 'bossName', 'bossDesc', 'bossFill', 'tabs', 'tabContent', 'recentUnlocks', 'toastStack', 'floatLayer', 'offlineModal', 'offlineSummary', 'modeName', 'modeTag', 'modeButtons', 'importModal', 'importField', 'errorModal', 'errorText'];
+    const ids = ['creditsValue', 'dataValue', 'exploitsValue', 'heatValue', 'heatFill', 'bwUsed', 'bwMax', 'bwState', 'fragmentsValue', 'resetPreview', 'tierValue', 'tierName', 'scoreValue', 'sessionTime', 'creditsPerSec', 'dataPerSec', 'exploitRate', 'terminalLog', 'heatStatePill', 'tutorialStatus', 'targetName', 'targetReward', 'targetDesc', 'targetRisk', 'targetHeat', 'tierProgress', 'tierProgressText', 'manualInfo', 'passiveCredits', 'passiveData', 'comboValue', 'contractCount', 'activeBuffs', 'bossName', 'bossDesc', 'bossFill', 'contractName', 'contractDesc', 'contractFill', 'contractProgressText', 'tabs', 'tabContent', 'recentUnlocks', 'toastStack', 'floatLayer', 'offlineModal', 'offlineSummary', 'modeName', 'modeTag', 'modeButtons', 'importModal', 'importField', 'errorModal', 'errorText', 'breachCount', 'contractsWon', 'highestHeatStat', 'scoreMultValue', 'nextFragmentText'];
     const out = {};
     ids.forEach(id => out[id] = $(id));
     return out;
@@ -38,6 +39,12 @@ export function render(game, el, activeTab) {
     el.dataValue.textContent = fmt(game.data);
     el.exploitsValue.textContent = fmt(game.exploits);
     el.heatValue.textContent = Math.floor(game.heat);
+    const heatStateLabel = heatState(game.heat);
+    const heatText = document.getElementById('heatStateText');
+    if (heatText) {
+        heatText.textContent = heatStateLabel;
+        heatText.className = 'sub ' + (game.heat >= 75 ? 'danger-text' : game.heat >= 50 ? 'warn-text' : '');
+    }
     el.heatFill.style.width = `${game.heat}%`;
     el.bwUsed.textContent = game.bandwidthUsed;
     el.bwMax.textContent = game.bandwidth;
@@ -46,6 +53,8 @@ export function render(game, el, activeTab) {
     el.resetPreview.textContent = `Reset: ${game.previewFragments}`;
     el.tierValue.textContent = game.targetTier;
     el.tierName.textContent = target.name;
+    el.scoreValue.textContent = fmt(game.score);
+    el.sessionTime.textContent = `${Math.floor((game.stats.totalPlaytime||0)/60)}m`;
     el.creditsPerSec.textContent = `${fmt(getPassiveCredits(game)*heatPenalty(game)*mode.passive)}/sec`;
     el.dataPerSec.textContent = `${fmt(getPassiveData(game)*heatPenalty(game)*mode.data)}/sec`;
     el.exploitRate.textContent = `${fmt(getPassiveExploits(game))}/sec`;
@@ -64,13 +73,20 @@ export function render(game, el, activeTab) {
     el.passiveCredits.textContent = fmt(getPassiveCredits(game) * heatPenalty(game) * mode.passive);
     el.passiveData.textContent = fmt(getPassiveData(game) * heatPenalty(game) * mode.data);
     el.comboValue.textContent = Math.floor(game.combo);
+    el.contractCount.textContent = game.stats.contractsDone || 0;
     el.modeName.textContent = mode.name;
     el.modeTag.textContent = mode.tag;
+    el.breachCount.textContent = fmt(game.stats.totalClicks || 0);
+    el.contractsWon.textContent = fmt(game.stats.contractsDone || 0);
+    el.highestHeatStat.textContent = Math.floor(game.stats.highestHeat || 0);
+    el.scoreMultValue.textContent = `x${(game.scoreMultiplier||1).toFixed(2)}`;
+    el.nextFragmentText.textContent = `Next fragment preview: ${game.previewFragments} now${game.previewFragments<1?' · keep pushing':''}`;
     const buffs = [];
     if (getPassiveCredits(game) > 0) buffs.push(`Automation ${fmt(getPassiveCredits(game))}/s`);
     if (getPassiveData(game) > 0) buffs.push(`Data ${fmt(getPassiveData(game))}/s`);
     if (getPassiveExploits(game) > 0) buffs.push(`Exploits ${fmt(getPassiveExploits(game))}/s`);
     if (game.manualCritChance > 0) buffs.push(`${Math.round(game.manualCritChance*100)}% crit`);
+    if (game.contractsUnlocked) buffs.push(`Contracts x${(game.contractMultiplier+(game.perks.contractBonus||0)).toFixed(2)}`);
     if (game.eventBuffs.length) buffs.push(...game.eventBuffs.map(b => `${b.name} ${Math.ceil(b.duration)}s`));
     el.activeBuffs.innerHTML = buffs.length ? buffs.map(x => chip(x)).join('') : chip('No active modifiers');
     const bossEntry = Object.entries(BOSSES).find(([tier]) => game.targetTier >= +tier && !game.bossDefeated[tier]);
@@ -83,6 +99,17 @@ export function render(game, el, activeTab) {
         el.bossName.textContent = boss.name;
         el.bossDesc.textContent = boss.desc;
         el.bossFill.style.width = `${game.bossProgress||0}%`;
+    }
+    if (game.contract) {
+        el.contractName.textContent = game.contract.name;
+        el.contractDesc.textContent = game.contract.desc;
+        el.contractFill.style.width = `${contractProgressPercent(game)}%`;
+        el.contractProgressText.textContent = `${fmt(game.contract.progress)} / ${fmt(game.contract.goal)} · ${Math.ceil(game.contract.timeLeft)}s left`;
+    } else {
+        el.contractName.textContent = 'No active contract';
+        el.contractDesc.textContent = 'Contracts give timed goals with bonus payouts.';
+        el.contractFill.style.width = '0%';
+        el.contractProgressText.textContent = 'No contract in progress.';
     }
     renderModeButtons(game, el);
     renderTabs(el, activeTab);
@@ -117,18 +144,18 @@ export function addLog(el, text) {
     line.className = 'log-line';
     line.innerHTML = `<span class='log-time'>[${clock()}]</span>${text}`;
     el.terminalLog.prepend(line);
-    while (el.terminalLog.children.length > 120) el.terminalLog.removeChild(el.terminalLog.lastChild);
+    while (el.terminalLog.children.length > 160) el.terminalLog.removeChild(el.terminalLog.lastChild);
 }
 export function toast(el, title, body) {
     const d = document.createElement('div');
     d.className = 'toast';
     d.innerHTML = `<div class='toast-title'>${title}</div><div>${body}</div>`;
     el.toastStack.prepend(d);
-    while (el.toastStack.children.length > 5) el.toastStack.removeChild(el.toastStack.lastChild);
+    while (el.toastStack.children.length > 6) el.toastStack.removeChild(el.toastStack.lastChild);
     setTimeout(() => d.remove(), 2600);
 }
 export function floatText(el, text, x, y, color = 'var(--cyan)') {
-    if (el.floatLayer.children.length > 20) return;
+    if (el.floatLayer.children.length > 24) return;
     const d = document.createElement('div');
     d.className = 'float';
     d.textContent = text;
@@ -171,4 +198,9 @@ function heatState(v) {
     if (v >= 50) return 'Traced';
     if (v >= 25) return 'Watched';
     return 'Stable';
+}
+
+export function closeAllModals(el) {
+    el.offlineModal.classList.remove('show');
+    el.importModal.classList.remove('show');
 }
