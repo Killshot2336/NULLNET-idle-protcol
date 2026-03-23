@@ -1,11 +1,5 @@
-import {
-    VERSION,
-    DATA
-} from './content.js';
-import {
-    clamp,
-    safe
-} from './math.js';
+import { VERSION, DATA } from './content.js';
+import { clamp, safe } from './math.js';
 
 export function createState(saved = {}) {
     return {
@@ -58,6 +52,10 @@ export function createState(saved = {}) {
         deepParse: false,
         parallelChains: false,
         comboPower: 0,
+        comboDecayPenalty: 0,
+        minHeatFloor: 0,
+        lowHeatRewardBonus: 0,
+        startExploitBonus: 0,
         combo: saved.combo || 0,
         comboTimer: saved.comboTimer || 0,
         burstCharge: saved.burstCharge || 0,
@@ -72,6 +70,13 @@ export function createState(saved = {}) {
         milestones: saved.milestones || {},
         recentUnlocks: saved.recentUnlocks || [],
         tutorialIndex: saved.tutorialIndex || 0,
+        originId: saved.originId || null,
+        originSelected: saved.originSelected || false,
+        mutationsOwned: saved.mutationsOwned || [],
+        mutationDraft: saved.mutationDraft || [],
+        emergencyReady: saved.emergencyReady || false,
+        emergencyUsed: saved.emergencyUsed || false,
+        warningState: saved.warningState || false,
         perks: saved.perks || {
             seedCapital: false,
             coolerBoots: false,
@@ -90,7 +95,8 @@ export function createState(saved = {}) {
             lowHeatTime: 0,
             burstUses: 0,
             exploitUses: 0,
-            contractsDone: 0
+            contractsDone: 0,
+            challengesDone: 0
         },
         cooldowns: saved.cooldowns || {
             coolTrace: 0,
@@ -103,12 +109,14 @@ export function createState(saved = {}) {
         eventTimer: saved.eventTimer || 15,
         eventBuffs: saved.eventBuffs || [],
         lastTick: saved.lastTick || Date.now(),
-        previewFragments: 0
+        previewFragments: 0,
+        runBonusesApplied: saved.runBonusesApplied || false,
+        _metaApplied: false
     };
 }
 
 export function sanitizeState(g) {
-    const numericKeys = ['credits', 'data', 'heat', 'bandwidth', 'bandwidthUsed', 'fragments', 'exploits', 'targetTier', 'progress', 'bossProgress', 'manualMultiplier', 'manualCritChance', 'manualMegaCritChance', 'manualDataChance', 'manualRewardPct', 'passiveCreditsFlat', 'passiveDataFlat', 'passiveExploitsFlat', 'passiveMultiplier', 'globalMultiplier', 'dataMultiplier', 'nodeMultiplier', 'progressMultiplier', 'heatGainMultiplier', 'heatDecayMultiplier', 'heatPenaltyReduction', 'autoHeatReduction', 'badEventReduction', 'badEventCancelChance', 'coolTraceBonus', 'burstGainMultiplier', 'tierBonusMultiplier', 'contractMultiplier', 'contractBonus', 'contractSpeed', 'eventValueMultiplier', 'scoreMultiplier', 'challengeMultiplier', 'contractSlots', 'nodeSlots', 'comboPower', 'combo', 'comboTimer', 'burstCharge', 'stealthWindow', 'lifetimeCredits', 'lifetimeData', 'score', 'eventTimer', 'previewFragments', 'lastTick'];
+    const numericKeys = ['credits', 'data', 'heat', 'bandwidth', 'bandwidthUsed', 'fragments', 'exploits', 'targetTier', 'progress', 'bossProgress', 'manualMultiplier', 'manualCritChance', 'manualMegaCritChance', 'manualDataChance', 'manualRewardPct', 'passiveCreditsFlat', 'passiveDataFlat', 'passiveExploitsFlat', 'passiveMultiplier', 'globalMultiplier', 'dataMultiplier', 'nodeMultiplier', 'progressMultiplier', 'heatGainMultiplier', 'heatDecayMultiplier', 'heatPenaltyReduction', 'autoHeatReduction', 'badEventReduction', 'badEventCancelChance', 'coolTraceBonus', 'burstGainMultiplier', 'tierBonusMultiplier', 'contractMultiplier', 'contractBonus', 'contractSpeed', 'eventValueMultiplier', 'scoreMultiplier', 'challengeMultiplier', 'contractSlots', 'nodeSlots', 'comboPower', 'comboDecayPenalty', 'minHeatFloor', 'lowHeatRewardBonus', 'startExploitBonus', 'combo', 'comboTimer', 'burstCharge', 'stealthWindow', 'lifetimeCredits', 'lifetimeData', 'score', 'eventTimer', 'previewFragments', 'lastTick'];
     for (const key of numericKeys) g[key] = Math.max(0, safe(g[key], 0));
     g.heat = clamp(g.heat, 0, 100);
     g.targetTier = clamp(Math.floor(g.targetTier || 1), 1, 8);
@@ -117,22 +125,12 @@ export function sanitizeState(g) {
         if (!g[key] || typeof g[key] !== 'object') g[key] = {};
     if (!Array.isArray(g.recentUnlocks)) g.recentUnlocks = [];
     if (!Array.isArray(g.eventBuffs)) g.eventBuffs = [];
+    if (!Array.isArray(g.mutationsOwned)) g.mutationsOwned = [];
+    if (!Array.isArray(g.mutationDraft)) g.mutationDraft = [];
     if (!g.stats || typeof g.stats !== 'object') g.stats = {
-        totalClicks: 0,
-        totalResets: 0,
-        highestHeat: 0,
-        eventsSeen: 0,
-        totalPlaytime: 0,
-        lowHeatTime: 0,
-        burstUses: 0,
-        exploitUses: 0,
-        contractsDone: 0
+        totalClicks: 0, totalResets: 0, highestHeat: 0, eventsSeen: 0, totalPlaytime: 0, lowHeatTime: 0, burstUses: 0, exploitUses: 0, contractsDone: 0, challengesDone: 0
     };
-    if (!g.cooldowns || typeof g.cooldowns !== 'object') g.cooldowns = {
-        coolTrace: 0,
-        burst: 0,
-        exploit: 0
-    };
+    if (!g.cooldowns || typeof g.cooldowns !== 'object') g.cooldowns = { coolTrace: 0, burst: 0, exploit: 0 };
     return g;
 }
 
@@ -166,6 +164,14 @@ export function rebuildPermanentState(g) {
         milestones: g.milestones || {},
         recentUnlocks: g.recentUnlocks || [],
         tutorialIndex: g.tutorialIndex || 0,
+        originId: g.originId || null,
+        originSelected: g.originSelected || false,
+        mutationsOwned: g.mutationsOwned || [],
+        mutationDraft: g.mutationDraft || [],
+        emergencyReady: g.emergencyReady || false,
+        emergencyUsed: g.emergencyUsed || false,
+        warningState: g.warningState || false,
+        runBonusesApplied: g.runBonusesApplied || false,
         perks: g.perks || fresh.perks,
         stats: g.stats || fresh.stats,
         cooldowns: g.cooldowns || fresh.cooldowns,
@@ -192,6 +198,12 @@ export function rebuildPermanentState(g) {
     apply(DATA.challenges, fresh.owned);
     apply(DATA.research, fresh.researchOwned);
     apply(DATA.nodes, fresh.nodesOwned);
+    if (fresh.challenge?.mods) {
+        for (const [k, v] of Object.entries(fresh.challenge.mods)) {
+            if (typeof v === 'boolean') fresh[k] = v;
+            else fresh[k] = (fresh[k] || 0) + v;
+        }
+    }
     if (fresh.prestigeOwned.seed_capital) fresh.perks.seedCapital = true;
     if (fresh.prestigeOwned.signal_familiarity) fresh.perks.globalBonus = .05;
     if (fresh.prestigeOwned.cooler_boots) fresh.perks.coolerBoots = true;
