@@ -368,7 +368,19 @@ export const EVENTS = [
     }],
     ['good', 'Lab Resonance', 'Event values increase for 20s.', g => g._addBuff('Lab Resonance', 20, {
         eventValueMultiplier: .20
-    })]
+    })],
+    ['good', 'System Breach Window', 'Massive rewards for 6s.', g => g._addBuff('Breach Window', 6, {
+        globalMultiplier: .85,
+        manualRewardPct: .35
+    })],
+    ['warn', 'Trace Cascade', 'Heat surges but combo spikes higher.', g => {
+        g.heat = Math.min(100, g.heat + 18);
+        g.combo = Math.min(20, g.combo + 4);
+    }],
+    ['bad', 'Counter-Seizure', 'Burst charge is drained and automation weakens.', g => {
+        g.burstCharge = Math.max(0, g.burstCharge - 40);
+        g._addBuff('Counter-Seizure', 10, { passiveMultiplier: -.20 });
+    }]
 ];
 export const CONTRACT_TEMPLATES = [{
     id: 'credit_surge',
@@ -406,34 +418,119 @@ export const CONTRACT_TEMPLATES = [{
     rewardData: 18,
     duration: 100,
     type: 'combo'
+}, {
+    id: 'burn_route',
+    name: 'Burn Route',
+    desc: 'Push a dangerous high-heat route for huge payout.',
+    goalBase: 1,
+    rewardCredits: 9000,
+    rewardData: 30,
+    duration: 70,
+    type: 'high_heat'
+}, {
+    id: 'silent_operator',
+    name: 'Silent Operator',
+    desc: 'Stay cold while breaching repeatedly.',
+    goalBase: 18,
+    rewardCredits: 7000,
+    rewardData: 26,
+    duration: 90,
+    type: 'cold_clicks'
 }];
 export const CHALLENGE_TEMPLATES = [{
     id: 'low_heat',
     name: 'Cold Route',
-    desc: 'All gains +25%, heat decay -40%, contract rewards +20%.',
-    mods: {
-        globalMultiplier: .25,
-        heatDecayMultiplier: -.40,
-        contractMultiplier: .20
-    }
+    desc: 'All gains +25%, heat decay -40%, contract rewards +20%. Stay under 40 heat.',
+    mods: { globalMultiplier: .25, heatDecayMultiplier: -.40, contractMultiplier: .20 },
+    type: 'low_heat',
+    goalBase: 1,
+    duration: 55,
+    rewardCredits: 5000,
+    rewardFragments: 1
 }, {
     id: 'scorched',
     name: 'Scorched Grid',
-    desc: 'All gains +40%, heat gain +35%.',
-    mods: {
-        globalMultiplier: .40,
-        heatGainMultiplier: .35
-    }
+    desc: 'All gains +40%, heat gain +35%. Reach a lethal output burst.',
+    mods: { globalMultiplier: .40, heatGainMultiplier: .35 },
+    type: 'credits',
+    goalBase: 20000,
+    duration: 65,
+    rewardCredits: 8000,
+    rewardFragments: 1
 }, {
     id: 'thin_bandwidth',
     name: 'Thin Bandwidth',
-    desc: 'Lower BW, stronger contracts and nodes.',
-    mods: {
-        bandwidth: -5,
-        contractMultiplier: .35,
-        nodeMultiplier: .25
-    }
+    desc: 'Lower BW, stronger contracts and nodes. Survive the restriction.',
+    mods: { bandwidth: -5, contractMultiplier: .35, nodeMultiplier: .25 },
+    type: 'clicks',
+    goalBase: 26,
+    duration: 60,
+    rewardCredits: 6500,
+    rewardFragments: 1
+}, {
+    id: 'phantom_clock',
+    name: 'Phantom Clock',
+    desc: 'Faster timers, better rewards. Gain raw Data quickly.',
+    mods: { contractSpeed: .15, dataMultiplier: .24, heatDecayMultiplier: -.15 },
+    type: 'data',
+    goalBase: 22,
+    duration: 50,
+    rewardCredits: 7000,
+    rewardFragments: 1
 }];
+
+export const ORIGINS = [{
+    id: 'drifter',
+    name: 'Drifter',
+    desc: 'Stable opener with faster contracts and safer resets.',
+    tag: 'Adaptive',
+    delta: { globalMultiplier: .08, contractSpeed: .10, heatDecayMultiplier: .12 }
+}, {
+    id: 'ghost_origin',
+    name: 'Ghost',
+    desc: 'Low heat, higher data, weaker raw manual pressure.',
+    tag: 'Stealth',
+    delta: { heatGainMultiplier: -.22, dataMultiplier: .18, manualMultiplier: -.10 }
+}, {
+    id: 'breaker',
+    name: 'Breaker',
+    desc: 'Violent opener built for crits and overdrive windows.',
+    tag: 'Aggressive',
+    delta: { manualMultiplier: .18, manualCritChance: .08, heatGainMultiplier: .18 }
+}];
+
+export const MUTATIONS = [{
+    id: 'overclock_core',
+    name: 'Overclock Core',
+    desc: 'Heat never drops below 25, but all output rises sharply.',
+    delta: { globalMultiplier: .28, minHeatFloor: 25 }
+}, {
+    id: 'ghost_skin',
+    name: 'Ghost Skin',
+    desc: 'Heat gain drops hard, but burst charge builds slower.',
+    delta: { heatGainMultiplier: -.30, burstGainMultiplier: -.22, dataMultiplier: .10 }
+}, {
+    id: 'chain_fever',
+    name: 'Chain Fever',
+    desc: 'Combo rewards surge, but combo decay is harsher.',
+    delta: { comboPower: .65, comboDecayPenalty: .75 }
+}, {
+    id: 'zero_day_seed',
+    name: 'Zero-Day Seed',
+    desc: 'Start each run with an exploit and stronger critical pressure.',
+    delta: { manualCritChance: .06, startExploitBonus: 1 }
+}, {
+    id: 'cold_engine',
+    name: 'Cold Engine',
+    desc: 'Cooling is stronger and low-heat play becomes more rewarding.',
+    delta: { coolTraceBonus: 10, lowHeatRewardBonus: .18, heatDecayMultiplier: .18 }
+}, {
+    id: 'rogue_daemon',
+    name: 'Rogue Daemon',
+    desc: 'Passive income spikes harder, but manual reward takes a hit.',
+    delta: { passiveMultiplier: .30, manualMultiplier: -.12, eventValueMultiplier: .12 }
+}];
+
 export const ACHIEVEMENTS = [a('first_breach', 'First Breach', g => g.stats.totalClicks >= 1), a('hundred_credits', '100 Credits', g => g.lifetimeCredits >= 100), a('auto_online', 'Automation Online', g => !!g.owned.auto_script_1), a('watched', 'Watched State', g => g.stats.highestHeat >= 25), a('critical_heat', 'Critical Heat', g => g.stats.highestHeat >= 75), a('researcher', 'First Research', g => Object.keys(g.researchOwned).length >= 1), a('node_owner', 'First Node', g => Object.keys(g.nodesOwned).length >= 1), a('contractor', 'First Contract', g => g.stats.contractsDone >= 1), a('lab_online', 'First Lab', g => Object.keys(g.owned).some(id => id.startsWith('lab_'))), a('tier_three', 'Tier 3', g => g.targetTier >= 3), a('tier_five', 'Tier 5', g => g.targetTier >= 5), a('first_reset', 'Protocol Reset', g => g.stats.totalResets >= 1), a('boss_1', 'Firewall Broken', g => !!g.bossDefeated[3]), a('score_1', '10K Score', g => g.score >= 10000), a('score_2', '100K Score', g => g.score >= 100000)];
 export const MILESTONES = [m('scripts_online', 'Scripts Online', g => g.lifetimeCredits >= 25), m('automation_online', 'Automation Online', g => g.lifetimeCredits >= 150), m('hardware_online', 'Hardware Online', g => g.lifetimeCredits >= 1000 && g.lifetimeData >= 10), m('contracts_online', 'Contracts Online', g => g.contractsUnlocked), m('labs_online', 'Lab Wing Online', g => Object.keys(g.owned).some(id => id.startsWith('lab_'))), m('tier_2', 'Expand to Tier 2', g => g.targetTier >= 2), m('tier_3', 'Expand to Tier 3', g => g.targetTier >= 3), m('tier_5', 'Expand to Tier 5', g => g.targetTier >= 5), m('node_theory', 'Node Grid Online', g => g.nodesUnlocked), m('first_reset', 'Reset Available', g => g.previewFragments >= 1)];
 export const TUTORIAL_STEPS = [{
